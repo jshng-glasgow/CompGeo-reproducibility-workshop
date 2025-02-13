@@ -61,6 +61,8 @@ Data has been extracted from this website https://gdex.ucar.edu/dataset/camels/f
 * Hydrological data : `camels_hydros.txt`
 * Topological data : `camels_topo.txt`
 
+A full data dictionary is given in `data/camels_data_dictionary.pdf`
+
 ## Output
 * Figures (`fig1.png`, `fig2.png` and `fig3.png`) are saved in `results\figures\`
 * Regression results stored in `results\results.csv`
