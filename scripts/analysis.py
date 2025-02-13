@@ -1,109 +1,103 @@
-from scipy import stats
-import arviz as az
-import numpy as np
-import matplotlib.pyplot as plt
-import pymc3 as pm
-import seaborn as sns
 import pandas as pd
-from sklearn import preprocessing
+import numpy as np
+import pymc3 as pm
+import arviz as az
+import matplotlib.pyplot as plt
 import geopandas as gpd
+import logging
+import os
 
-def run():
-    ## Data available here https://gdex.ucar.edu/dataset/camels/version/1.2/file.html
-    # load data
-    camels_hydro = pd.read_csv(r'C:\Users\jws10y\git\reproducibility_workshop\data\camels_hydro.txt', delimiter=';')
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Set random seed for reproducibility
+SEED = 42
+np.random.seed(SEED)
+
+# Define file paths
+DATA_DIR = os.path.join(os.getcwd(), "data")
+RESULTS_DIR = os.path.join(os.getcwd(), "results")
+FIGURES_DIR = os.path.join(RESULTS_DIR, "figures")
+
+# Ensure directories exist
+os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(FIGURES_DIR, exist_ok=True)
+
+# Function to load datasets
+def load_data():
+    logging.info("Loading datasets...")
+    hydro_path = os.path.join(DATA_DIR, "camels_hydro.txt")
+    topo_path = os.path.join(DATA_DIR, "camels_topo.txt")
+    geos_path = os.path.join(DATA_DIR, "camel_data.shp")
+    
+    camels_hydro = pd.read_csv(hydro_path, delimiter=';')
+    camels_topo = pd.read_csv(topo_path, delimiter=';')
+    camels_geos = gpd.read_file(geos_path)
+    
     camels_hydro['hru_id'] = camels_hydro['gauge_id']
-    camels_hydro.head()
-
-    camels_topo= pd.read_csv(r'C:\Users\jws10y\git\reproducibility_workshop\data\camels_topo.txt', delimiter=';')
     camels_topo['hru_id'] = camels_topo['gauge_id']
-    camels_topo.head()
+    
+    return camels_hydro, camels_topo, camels_geos
 
-    camels_geos = gpd.read_file(r'C:\Users\jws10y\git\reproducibility_workshop\data\camel_data.shp')
-    camels_geos.head()
-
-    # merge datasets
-    camels_basins = pd.merge(camels_geos, camels_hydro)
+# Function to preprocess data
+def preprocess_data(camels_hydro, camels_topo, camels_geos):
+    logging.info("Merging and processing datasets...")
+    camels_basins = pd.merge(camels_geos, camels_hydro, on='hru_id')
     camels_basins = pd.merge(camels_basins, camels_topo, on='hru_id')
-    camels_basins.head()
-
-    # convert units
-    camels_basins['q_mean_cms'] = camels_basins['q_mean'] * (1e-3) *(camels_basins['area_gages2']*1000**2) * (1/(60*60*24)) 
-
+    
+    # Convert units (mm/day to m^3/s)
+    sec_per_day = 86400
+    camels_basins['q_mean_cms'] = camels_basins['q_mean'] * (1e-3) * (camels_basins['area_gages2'] * 1e6) * (1 / sec_per_day)
+    
+    # Convert to GeoDataFrame
     camels_basins = gpd.GeoDataFrame(camels_basins, geometry='geometry')
-    fig, ax = plt.subplots(2,1, figsize=(6,6))
+    return camels_basins
+
+# Function to visualize data
+def plot_data(camels_basins):
+    logging.info("Generating spatial plots...")
+    fig, ax = plt.subplots(2, 1, figsize=(6, 6))
     camels_basins.plot(ax=ax[0], legend=True, column='q_mean')
     camels_basins.plot(ax=ax[1], legend=True, column='area_gages2')
-
     ax[0].set_title('Mean Daily Discharge (mm/day)')
-    ax[1].set_title('Catchment Area (km2)')#
+    ax[1].set_title('Catchment Area (km²)')
     fig.tight_layout()
-    fig.savefig('fig1.png')
+    fig.savefig(os.path.join(FIGURES_DIR, 'fig1.png'))
 
-    # get a sample of the total dataset for analysis
-    camels_basins = camels_basins.sample(n=100)
-
-    # Pull out X and Y of interest
-    x_ftr= 'area_gages2'
-    y_ftr = 'q_mean_cms'
-    xs = camels_basins[x_ftr]
-    xs = xs.fillna(xs.mean())
-
-    ys = camels_basins[y_ftr]
-    ys = ys.fillna(ys.mean())
-
-    # Take log-transform 
-    xs = np.log(xs)
-    ys = np.log(ys)
-
-    # informative priors
+# Function to run Bayesian regression
+def run_bayesian_model(camels_basins):
+    logging.info("Running Bayesian regression model...")
+    sample_data = camels_basins.sample(n=100, random_state=SEED)
+    
+    xs = np.log(sample_data['area_gages2'].fillna(sample_data['area_gages2'].mean()))
+    ys = np.log(sample_data['q_mean_cms'].fillna(sample_data['q_mean_cms'].mean()))
+    
     slope_prior, intercept_prior = np.polyfit(xs.values.flatten(), ys.values.flatten(), 1)
-
-    ### PyMC linear model
+    
     with pm.Model() as model:
-        
-        # Priors
         alpha = pm.Normal('alpha', mu=intercept_prior, sigma=10)
         beta = pm.Normal('beta', mu=slope_prior, sigma=10)
         sigma = pm.HalfNormal('sigma', sigma=1)
-    
-        # mean/expected value of the model
-        mu = alpha + beta * xs
-    
-        # likelihood
-        y = pm.Normal('y', mu=mu, sigma=sigma, observed=ys)
-    
-        # sample from the posterior
-        trace = pm.sample(200, cores=3)
         
-    ax = az.plot_trace(trace, chain_prop='color', legend=True, figsize=(12,6))
-    fig = ax.ravel()[0].figure
-    fig.savefig('fig2.png')
-
-    ## Generate posterior predictive samples
-    ppc = pm.sample_posterior_predictive(trace, model=model)
-
-    ### Plot the posterior predictive interval
-    fig, ax = plt.subplots(ncols=2, figsize=(8,4))
+        mu = alpha + beta * xs
+        y = pm.Normal('y', mu=mu, sigma=sigma, observed=ys)
+        
+        trace = pm.sample(200, cores=1, random_seed=SEED)
     
-    # log space
-    az.plot_hdi(xs, ppc['y'], 
-                color='cornflowerblue', ax=ax[0], hdi_prob=0.9)
-    ax[0].scatter(xs, ys, alpha=0.6, s=20, color='k')
-    ax[0].set_xlabel('Log ' + x_ftr)
-    ax[0].set_ylabel('Log Mean Flow (m3/s)')
+    az.plot_trace(trace, figsize=(12, 6))
+    plt.savefig(os.path.join(FIGURES_DIR, 'fig2.png'))
     
-    # original dim space
-    az.plot_hdi(np.exp(xs), np.exp(ppc['y']), 
-                color='cornflowerblue', ax=ax[1], hdi_prob=0.9)
-    ax[1].scatter(np.exp(xs), np.exp(ys), alpha=0.6, s=20, color='k')
-    ax[1].set_xlabel(x_ftr)
-    ax[1].set_ylabel('Mean Flow (m3/s)')
-    plt.suptitle('90% Posterior Prediction Interval', fontsize=14)
-    fig.savefig('fig3.png')
-
     results = az.summary(trace)
-    results.to_csv('results.csv')
-    
-if __name__=='__main__':
-    run()
+    results.to_csv(os.path.join(RESULTS_DIR, 'results.csv'))
+    return trace
+
+# Main script execution
+def main():
+    camels_hydro, camels_topo, camels_geos = load_data()
+    camels_basins = preprocess_data(camels_hydro, camels_topo, camels_geos)
+    plot_data(camels_basins)
+    trace = run_bayesian_model(camels_basins)
+    logging.info("Script execution complete.")
+
+if __name__ == '__main__':
+    main()
