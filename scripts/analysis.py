@@ -25,6 +25,8 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 
 # Function to load datasets
 def load_data():
+    """Loads the data from the /data/ directory"""
+    
     logging.info("Loading datasets...")
     hydro_path = os.path.join(DATA_DIR, "camels_hydro.txt")
     topo_path = os.path.join(DATA_DIR, "camels_topo.txt")
@@ -41,6 +43,16 @@ def load_data():
 
 # Function to preprocess data
 def preprocess_data(camels_hydro, camels_topo, camels_geos):
+    """Processes data, merging the datasets into a single dataset on the shared
+    'hru_id' column.
+    args:
+        camels_hydro (pd.DataFrame) : the hydrological data with col 'q_mean'
+        camels_topo (pd.DataFrame) : the topological data with col 'area_gages2'
+        camels_geos (gpd.GeoDataFrame) : the geospatial data with 'geometry' col. 
+        
+    returns:
+        gpd.GeoDataFrame : merged on the 'hru_id' column
+    """
     logging.info("Merging and processing datasets...")
     camels_basins = pd.merge(camels_geos, camels_hydro, on='hru_id')
     camels_basins = pd.merge(camels_basins, camels_topo, on='hru_id')
@@ -51,6 +63,7 @@ def preprocess_data(camels_hydro, camels_topo, camels_geos):
     
     # Convert to GeoDataFrame
     camels_basins = gpd.GeoDataFrame(camels_basins, geometry='geometry')
+
     return camels_basins
 
 # Function to visualize data
@@ -66,9 +79,16 @@ def plot_data(camels_basins):
 
 # Function to run Bayesian regression
 def run_bayesian_model(camels_basins):
+    """Runs the bayesian model on the data
+    args:
+        camels_basins (pd.DataFrame) : the full dataset to apply the model to.
+    returns:
+        trace (pm.trace) : the trace output of the model.
+    """
+    
     logging.info("Running Bayesian regression model...")
     sample_data = camels_basins.sample(n=100, random_state=SEED)
-    
+    # apply log with mean interpolation of missing data
     xs = np.log(sample_data['area_gages2'].fillna(sample_data['area_gages2'].mean()))
     ys = np.log(sample_data['q_mean_cms'].fillna(sample_data['q_mean_cms'].mean()))
     
@@ -82,7 +102,7 @@ def run_bayesian_model(camels_basins):
         mu = alpha + beta * xs
         y = pm.Normal('y', mu=mu, sigma=sigma, observed=ys)
         
-        trace = pm.sample(200, cores=1, random_seed=SEED)
+        trace = pm.sample(2000, cores=3, random_seed=SEED)
     
     az.plot_trace(trace, figsize=(12, 6))
     plt.savefig(os.path.join(FIGURES_DIR, 'fig2.png'))

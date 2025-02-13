@@ -10,6 +10,8 @@ numpy==1.19.5
 matplotlib==3.3.4
 arviz==0.10.0
 
+Running this code on a GPU will significantly improve inference speed.
+
 NOTE: This has been run successfully on both a Windows 10 and an Oracle Linux 9.5 Server
 
 ## Installation and Setup
@@ -45,10 +47,30 @@ Once everything is installed, you can run the analysis script:
 ```
 python scripts/analysis.py
 ```
+## Testing
+A test suite for the code can be found in `scripts/tests.py` and can be run using:
+```
+$ python scripts/tests.py
+```
+All tests currently run without failiure (13/02/25).
+
+## Data
+Data has been extracted from this website https://gdex.ucar.edu/dataset/camels/file.html on 12/02/25. You do not need the full dataset from this site to perform this analysis. Specifically, the data used in this analysis is as follows:
+
+* Geospatial data : `basin_set_full_res.zip`, saved in this repo as `data\camel_data.shp`
+* Hydrological data : `camels_hydros.txt`
+* Topological data : `camels_topo.txt`
+
 ## Output
 * Figures (`fig1.png`, `fig2.png` and `fig3.png`) are saved in `results\figures\`
 * Regression results stored in `results\results.csv`
 * Logs printed to terminal
+
+## Citation
+Please cite this code as
+```
+...
+```
 
 ## License
 MIT License
