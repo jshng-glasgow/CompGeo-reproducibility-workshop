@@ -1,14 +1,17 @@
+# standard library imports
+import logging
+import datetime
+import os
+import sys
+# third party imports
 import pandas as pd
 import numpy as np
 import pymc3 as pm
 import arviz as az
 import matplotlib.pyplot as plt
 import geopandas as gpd
-import logging
-import datetime
-import os
-import sys
-from utils import is_git_clean, retrieve_git_hash
+# local imports
+from utils import is_git_clean, retrieve_git_hash, save_metadata
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -129,13 +132,10 @@ def main():
     trace = run_bayesian_model(camels_basins)
     logging.info("Script execution complete.")
     
-    # add metadata for results
-    results = {"seed":SEED,
-               "timestamp":str(datetime.datetime.now()),
-               "revision":git_hash,
-               "system":sys.version}
-    with open(os.path.join(RESULTS_DIR, 'results_metadata.txt'), 'w') as f:
-        f.write(str(results))
+    # save results metadata
+    metadata_path = os.path.join(RESULTS_DIR, 'results_metadata.txt')
+    save_metadata(SEED, git_hash, save_path)
+
 
 if __name__ == '__main__':
     main()

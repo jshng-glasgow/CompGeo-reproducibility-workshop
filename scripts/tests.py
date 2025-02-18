@@ -1,7 +1,10 @@
+# standard library imports
 import unittest
+import os
+# third party imports
 import pandas as pd
 import numpy as np
-import os
+# local imports
 from analysis import load_data, preprocess_data, run_bayesian_model
 
 class TestReproducibilityScript(unittest.TestCase):
