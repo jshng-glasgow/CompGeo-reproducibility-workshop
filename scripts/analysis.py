@@ -7,7 +7,7 @@ import geopandas as gpd
 import logging
 import datetime
 import os
-from utils import is_git_clean, retrieve_git_hash()
+from utils import is_git_clean, retrieve_git_hash
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
