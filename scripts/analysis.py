@@ -31,7 +31,11 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 
 # Function to load datasets
 def load_data():
-    """Loads the data from the /data/ directory"""
+    """Loads the data from the /data/ directory.
+    
+    returns: 
+        tuple (pd.DataFrame, pd.DataFrame, gpd.GeoDataFrame)
+    """
     
     logging.info("Loading datasets...")
     hydro_path = os.path.join(DATA_DIR, "camels_hydro.txt")
@@ -74,6 +78,15 @@ def preprocess_data(camels_hydro, camels_topo, camels_geos):
 
 # Function to visualize data
 def plot_data(camels_basins):
+    """Maps the data in the camels_basin dataframe
+    
+    args:
+    camels_basins (gpd.GeoDataFrame) : dataframe with geometry, q_mean and 
+        area_gages2 columns
+    
+    returns:
+        None
+    """
     logging.info("Generating spatial plots...")
     fig, ax = plt.subplots(2, 1, figsize=(6, 6))
     camels_basins.plot(ax=ax[0], legend=True, column='q_mean')
@@ -134,7 +147,7 @@ def main():
     
     # save results metadata
     metadata_path = os.path.join(RESULTS_DIR, 'results_metadata.txt')
-    save_metadata(SEED, git_hash, save_path)
+    save_metadata(SEED, git_hash, metadata_path)
 
 
 if __name__ == '__main__':
