@@ -7,8 +7,7 @@ import geopandas as gpd
 import logging
 import datetime
 import os
-import sys
-import subprocess
+from utils import is_git_clean, retrieve_git_hash()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,16 +24,6 @@ FIGURES_DIR = os.path.join(RESULTS_DIR, "figures")
 # Ensure directories exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(FIGURES_DIR, exist_ok=True)
-
-# add metadata to results folder
-# don't run anything if the repository hasn't been commited
-if subprocess.call(('git', 'diff-index', '--quiet', 'HEAD')):
-    print('Repository dirty, please commit first.')
-    sys.exit(1)
-    
-# get git hash
-hash_cmd = ('git', 'rev-parse', 'HEAD')
-revision = subprocess.check_output(hash_cmd)
 
 # Function to load datasets
 def load_data():
@@ -126,6 +115,13 @@ def run_bayesian_model(camels_basins):
 
 # Main script execution
 def main():
+    
+    # don't run anything if the repository hasn't been commited
+    is_git_clean()    
+    # get git hash
+    git_hash = retrieve_git_hash()
+    
+    # run the analsyis
     camels_hydro, camels_topo, camels_geos = load_data()
     camels_basins = preprocess_data(camels_hydro, camels_topo, camels_geos)
     plot_data(camels_basins)
@@ -135,7 +131,7 @@ def main():
     # add metadata for results
     results = {"seed":SEED,
                "timestamp":str(datetime.datetime.now()),
-               "revision":revision,
+               "revision":git_hash,
                "system":sys.version}
     with open(os.path.join(RESULTS_DIR, 'results_metadata.txt'), 'w') as f:
         f.write(str(results))
