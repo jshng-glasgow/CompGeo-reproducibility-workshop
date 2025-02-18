@@ -1,6 +1,8 @@
 # Bayesian Inference for Hydrological Modeling: A Case Study of Catchment Flow in the CAMELS Dataset
 This repository contains code used to model catchment flows in the CAMELS dataset in the research paper `research_paper.pdf`. The code is based on [analysis found here](https://waterprogramming.wordpress.com/2024/04/11/introduction-to-bayesian-regression-using-pymc/).
 
+The results were obtained using Python 3.6.13 runing on Windows 10.
+
 ## Dependencies
 python==3.6.13
 pymc3==3.10.0

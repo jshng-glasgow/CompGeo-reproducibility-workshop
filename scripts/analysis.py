@@ -5,7 +5,10 @@ import arviz as az
 import matplotlib.pyplot as plt
 import geopandas as gpd
 import logging
+import datetime
 import os
+import sys
+import subprocess
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -22,6 +25,16 @@ FIGURES_DIR = os.path.join(RESULTS_DIR, "figures")
 # Ensure directories exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(FIGURES_DIR, exist_ok=True)
+
+# add metadata to results folder
+# don't run anything if the repository hasn't been commited
+if subprocess.call(('git', 'diff-index', '--quiet', 'HEAD')):
+    print('Repository dirty, please commit first.')
+    sys.exit(1)
+    
+# get git hash
+hash_cmd = ('git', 'rev-parse', 'HEAD')
+revision = subprocess.check_output(hash_cmd)
 
 # Function to load datasets
 def load_data():
@@ -118,6 +131,14 @@ def main():
     plot_data(camels_basins)
     trace = run_bayesian_model(camels_basins)
     logging.info("Script execution complete.")
+    
+    # add metadata for results
+    results = {"seed":SEED,
+               "timestamp":str(datetime.datetime.now()),
+               "revision":revision,
+               "system":sys.version}
+    with open(os.path.join(RESULTS_DIR, 'results_metadata.txt'), 'w') as f:
+        f.write(str(results))
 
 if __name__ == '__main__':
     main()
