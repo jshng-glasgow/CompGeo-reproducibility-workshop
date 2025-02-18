@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import datetime
 
 def is_git_clean():
     # Check for uncommitted changes (staged & unstaged)
@@ -19,3 +20,13 @@ def retrieve_git_hash():
     hash_cmd = ('git', 'rev-parse', 'HEAD')
     revision = subprocess.check_output(hash_cmd)
     return revision
+
+def save_metadata(seed, git_hash, save_path):
+    # add metadata for results
+    results_metadata = {"seed":seed,
+                        "timestamp":str(datetime.datetime.now()),
+                        "git_hash":git_hash,
+                        "system":sys.version}
+    
+    with open(save_path, 'w') as f:
+        f.write(str(results_metadata))
