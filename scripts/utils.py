@@ -15,4 +15,7 @@ def is_git_clean():
         print('Repository dirty or on a detached HEAD state. Please commit and/or track your changes first.')
         sys.exit(1)
 
-is_git_clean()
+def retrieve_git_hash():
+    hash_cmd = ('git', 'rev-parse', 'HEAD')
+    revision = subprocess.check_output(hash_cmd)
+    return revision

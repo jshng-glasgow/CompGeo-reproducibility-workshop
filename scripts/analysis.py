@@ -7,6 +7,7 @@ import geopandas as gpd
 import logging
 import datetime
 import os
+import sys
 from utils import is_git_clean, retrieve_git_hash
 
 # Set up logging
